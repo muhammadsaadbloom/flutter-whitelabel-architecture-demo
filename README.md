@@ -1,125 +1,116 @@
-# White-Label Learning Platform
+# Bloom — Flutter Learning Platform Architecture
 
-**Production-grade Flutter architecture demo** for building multiple branded educational apps from a single codebase.
+**Production-scale Flutter architecture case study** for a multi-feature, white-label educational app: adaptive learning, gamification, social features, and tiered monetization on a single codebase.
 
-This repository showcases a clean, scalable system design used to power white-label learning applications — including dynamic configuration, modular features, offline-first architecture, and abstracted monetization.
-
-> **Note**  
-> This is a public architecture showcase with sanitized endpoints and mock configurations.  
-> Core production engines, proprietary APIs, and live monetization keys remain in a private enterprise repository.
+> **Note on this repository**
+> This is a public architectural case study. Endpoints, API keys, `RevenueCat`/`AdMob` identifiers, and `firebase_options.dart` have been replaced with placeholders. If you're evaluating this as a fork/template, do **not** ship it without regenerating your own Firebase project, RevenueCat entitlements, and AdMob unit IDs.
 
 ---
 
 ## Architecture Overview
 
-The project follows a **Feature-First Clean Architecture** with strict separation between shared infrastructure and domain-specific feature modules.
+**Feature-First Clean Architecture** — each feature is a self-contained module (`domain` / `data` / `presentation`), depending only on `core`, never the reverse.
 
 ```text
 lib/
 ├── main.dart
+├── firebase_options.dart
+├── model/                          # Shared Hive + API DTOs
+├── hive_registrar.g.dart
+├── in-app purchase/                # Platform IAP layer (store <-> RevenueCat bridge)
 └── src/
-    ├── core/                       # Shared infrastructure
-    │   ├── config/                 # White-label configuration engine
-    │   ├── network/                # Dio client + secure gateway
-    │   ├── theme/                  # Dynamic light/dark theme tokens
-    │   ├── storage/                # Hive persistence layer
-    │   └── monetization/           # RevenueCat + AdMob abstraction
+    ├── core/
+    │   ├── network/                 # Dio client, gateway auth, retry/backoff, SSL pinning
+    │   ├── security/                # App Check, secure token store, log sanitizer, input validation
+    │   ├── storage/                 # Hive box management
+    │   ├── theme/                   # Design tokens, responsive layout, dynamic theming
+    │   ├── monetization/            # Entitlements, paywall, ads, spin wheel, offer engine
+    │   ├── services/                # Notifications, retention, sync, boot/launch coordination
+    │   ├── providers/                # App-wide state (user session, etc.)
+    │   ├── utils/                    # Device capability/identity, app upgrader, offline guard
+    │   └── widgets/                  # Shared UI primitives
     │
-    └── features/                   # Independent feature modules
-        ├── ai_tutor/               # Socratic AI chat & search
-        ├── content/                # WordPress REST + course engine
-        ├── quiz/                   # Adaptive quizzes & exam simulator
-        ├── flashcards/             # Spaced repetition (SM-2)
-        └── gamification/           # Streaks, XP, progression
+    └── features/
+        ├── ai/                       # AI gateway, token quota, JSON repair, exceptions
+        ├── ai_tutor/                  # Socratic tutoring flow
+        ├── ai_history/                # AI interaction history
+        ├── learning/                  # Lesson reading, progress tracking, micro-checks
+        ├── educational_content/       # Curriculum catalog & skill-tree progress
+        ├── visual_learning/            # Concept mapping & interactive playground
+        ├── video_companion/            # Video/playlist content + unlock policy
+        ├── quiz_engine/                # Core quiz runtime, validation, sections
+        ├── quiz/                       # First-quiz onboarding flow
+        ├── exam_simulator/             # Adaptive exam engine, difficulty estimation, review
+        ├── flashcards/                  # SM-2 spaced repetition scheduler
+        ├── notebook/                    # Smart notebook (source-linked notes)
+        ├── mistakes/                    # Mistake journal & repository
+        ├── mastery/                     # Category mastery calculation
+        ├── analytics/                    # Exam readiness scoring, performance tracking
+        ├── smart_search/                  # In-app search
+        ├── smart_study_plan/               # Generated study plans & task launcher
+        ├── daily_goals/                     # Daily goal tracking
+        ├── streak/                           # Streak state, freeze/recovery logic
+        ├── gamification/
+        │   ├── xp/                            # XP, levels, boosts
+        │   ├── achievements/                   # Unlock conditions & popups
+        │   ├── daily_challenges/                # Daily challenge catalog
+        │   └── daily_bonus/                      # Daily bonus calendar
+        ├── leaderboards/                          # League tiers, promotion zones, podium
+        ├── cosmetics/                               # Cosmetic shop/items
+        ├── friends/                                  # Friend graph, challenges, privacy
+        ├── discord/                                   # Discord roles/events integration
+        ├── engagement/
+        │   ├── retention_dashboard/                    # Retention metrics UI
+        │   ├── personalized_recommendations/            # Recommendation engine
+        │   ├── daily_fact/ · daily_quote/                # Daily content widgets
+        │   └── learning/                                  # Daily review screen
+        ├── retention/                                       # Progress insights, weekly challenges, boosters
+        ├── notifications/                                     # In-app banners, settings
+        ├── onboarding/                                          # Age gate, country picker, name input
+        ├── feedback/                                              # Bug reports, feature requests, ratings
+        └── monetization/                                           # IAP store UI section
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer              | Technology                          |
-|--------------------|-------------------------------------|
-| Framework          | Flutter (Dart ≥ 3.12)               |
-| State Management   | Provider + `ChangeNotifier`         |
-| Local Storage      | Hive / Hive CE                      |
-| Networking         | Dio + custom interceptors           |
-| Monetization       | RevenueCat + AdMob Mediation        |
-| Backend            | Headless WordPress REST API         |
-| Auth / Services    | Firebase                            |
-| AI                 | Secure serverless AI gateway        |
-
----
-
-## White-Label Configuration Engine
-
-All branding, content sources, feature flags, and monetization keys are driven by a single `AppConfig` surface. Feature modules never hardcode brand-specific values.
-
-```dart
-// lib/src/core/config/app_config.dart
-
-class AppConfig {
-  final String appId;
-  final String appName;
-  final String wpHost;
-  final int rootCategoryId;
-  final String revenueCatApiKey;
-  final String adMobBannerId;
-  final String privacyPolicyUrl;
-
-  const AppConfig({
-    required this.appId,
-    required this.appName,
-    required this.wpHost,
-    required this.rootCategoryId,
-    required this.revenueCatApiKey,
-    required this.adMobBannerId,
-    required this.privacyPolicyUrl,
-  });
-
-  /// Demo configuration for public architecture showcase
-  static const AppConfig demo = AppConfig(
-    appId: 'com.demo.learningapp',
-    appName: 'Demo Learn',
-    wpHost: 'https://demo-cms.example.com',
-    rootCategoryId: 101,
-    revenueCatApiKey: 'goog_demo_key_placeholder',
-    adMobBannerId: 'ca-app-pub-3940256099942544/6300978111', // Google test ad unit
-    privacyPolicyUrl: 'https://example.com/privacy',
-  );
-}
-```
-
-This approach allows a single codebase to power multiple branded applications by simply swapping the configuration at build or runtime.
+| Layer              | Technology                                              |
+|--------------------|----------------------------------------------------------|
+| Framework          | Flutter (Dart ≥ 3.12, sealed classes / patterns)         |
+| State Management   | `Provider` + `ChangeNotifier`                            |
+| Local Storage      | Hive / Hive CE (offline-first persistence)                |
+| Networking         | Dio — custom interceptors for auth, retry/backoff, gateway routing |
+| Security           | SSL pinning, Firebase App Check, secure token storage, log sanitization |
+| Monetization       | RevenueCat (subscriptions) + platform IAP bridge + AdMob mediation |
+| Backend            | Headless CMS via REST + secure serverless AI gateway       |
+| Auth / Infra       | Firebase (Auth, Crashlytics, Cloud Messaging)               |
+| AI                 | Server-side gateway pattern — no AI provider keys ship on-device |
 
 ---
 
 ## Engineering Highlights
 
-- **Zero-Secret AI Integration**  
-  Client features communicate with a secure serverless gateway. API keys never ship inside the mobile binary.
-
-- **Tiered Monetization Abstraction**  
-  Clean separation between free-tier limits (AI quota, ad triggers) and premium entitlements managed through RevenueCat.
-
-- **Offline-First Design**  
-  Hive-powered persistence enables continuous quiz taking, flashcard review, and course access without network connectivity.
-
-- **Adaptive Spaced Repetition**  
-  Full SM-2 algorithm implementation with mistake ledger and optimized review scheduling.
-
-- **Dynamic Theming**  
-  Light/dark theme tokens driven by configuration, supporting brand-specific visual identity.
+- **Zero-Secret AI Integration** — AI features route through a serverless gateway; no provider keys embedded in the client. Includes daily quota tracking and JSON-repair for malformed model output.
+- **Tiered Monetization Engine** — Free-tier limits (AI quota, quiz retries, notebook access, ad triggers), reward mechanics (streak multipliers, spin wheel, daily bonus), and premium entitlement gating, all centralized through a single entitlement cache.
+- **Retention & Notification System** — A/B-tested, personalized push notifications with per-trigger logic (streak risk, friend activity, content drops, re-engagement) and an engagement guard to prevent notification fatigue.
+- **Offline-First Design** — Hive-backed persistence for quizzes, flashcards, streaks, and study plans; sync services reconcile state once connectivity returns.
+- **Adaptive Learning** — SM-2 spaced repetition, adaptive exam difficulty estimation, and mastery calculation feed a generated study plan.
+- **Social Layer** — Friend graph with privacy controls, peer challenges, and Discord role/event integration.
+- **Defense in Depth** — SSL pinning, Firebase App Check, secure token storage, and input validation live in `core/security`, isolated from feature code.
 
 ---
 
 ## Getting Started
 
-### 1. Clone the repository
+### 1. Clone and configure
 
 ```bash
-git clone https://github.com/your-username/flutter-whitelabel-architecture-demo.git
-cd flutter-whitelabel-architecture-demo
+git clone https://github.com/your-username/bloom-flutter-architecture.git
+cd bloom-flutter-architecture
 ```
+
+Replace `lib/firebase_options.dart` with your own `flutterfire configure` output, and set your own RevenueCat/AdMob identifiers in the monetization config before running.
 
 ### 2. Install dependencies
 
@@ -140,7 +131,7 @@ flutter analyze
 flutter test
 ```
 
-### 5. Run the demo
+### 5. Run
 
 ```bash
 flutter run
@@ -150,22 +141,22 @@ flutter run
 
 ## Project Structure Philosophy
 
-| Principle                    | Implementation                                      |
-|-----------------------------|-----------------------------------------------------|
-| Feature isolation           | Each feature is a self-contained module             |
-| Dependency direction        | Features depend on `core`, never the reverse        |
-| Configuration over code     | Branding & flags live in `AppConfig`                |
-| Testability                 | Providers and repositories are easily mockable      |
-| Scalability                 | New brands or features require minimal changes      |
+| Principle                | Implementation                                         |
+|---------------------------|----------------------------------------------------------|
+| Feature isolation          | Each feature owns its `domain`/`data`/`presentation` layers |
+| Dependency direction        | Features depend on `core`; `core` never depends on features |
+| Configuration over code      | Branding, flags, and entitlements are externally driven |
+| Testability                   | Providers/repositories are constructor-injected and mockable |
+| Scalability                    | New features or brands require no changes to existing modules |
 
 ---
 
-## Access & Contact
+## License & Access
 
-This repository is an open architectural sample intended for portfolio and hiring review.
+This repository is shared for portfolio and technical review purposes. See [`LICENSE`](./LICENSE) for terms.
 
-For access to the full production codebase, private modules, or detailed technical discussion, feel free to reach out via GitHub or email.
+For questions about the architecture or production deployment details, open an issue or reach out via the contact info on my GitHub profile.
 
 ---
 
-**Built with Flutter · Clean Architecture · Production-minded design**
+**Built with Flutter · Clean Architecture · Offline-first · Production-minded design**
