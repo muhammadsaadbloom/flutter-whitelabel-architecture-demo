@@ -1,184 +1,230 @@
-# Flutter White-Label Learning Platform — Architecture Showcase
+# Bloom Learning Platform
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
-[![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Feature--First-4CAF50)](#architecture-overview)
-[![License](https://img.shields.io/badge/License-MIT-informational)](./LICENSE)
+> A modular, offline-first, feature-first Clean Architecture learning platform built with Flutter. This codebase is the shared technical core for a portfolio of subject-specific educational apps (economics, biology, sociology, astronomy, etc.) — this repository instance is subject-agnostic infrastructure; subject content is injected per app.
 
-**A production-grade Flutter architecture for shipping multiple branded educational apps from a single codebase.**
+[![Flutter](https://img.shields.io/badge/Flutter-3.47.x-02569B?logo=flutter)](https://docs.flutter.dev/release/release-notes)
+[![Dart](https://img.shields.io/badge/Dart-3.11.x-0175C2?logo=dart)](https://dart.dev)
+[![State Management](https://img.shields.io/badge/State-Provider%20%2F%20ChangeNotifier-informational)]()
+[![Local Storage](https://img.shields.io/badge/Storage-Hive-yellow)]()
+[![Architecture](https://img.shields.io/badge/Architecture-Feature--First%20Clean%20Architecture-success)]()
+[![License](https://img.shields.io/badge/license-Proprietary-lightgrey)]()
 
-One engine. Any brand. Swap a config, not the code — new white-label apps launch without touching feature logic.
-
-> **About this repository**
-> This is a public architecture showcase with sanitized endpoints, mock API keys, and placeholder branding. The proprietary content pipeline, live monetization credentials, and several production-only modules are kept in a private repository. What's here is real, working architecture — not pseudocode.
-
----
-
-## Why This Matters
-
-**For business owners** — this is the engineering pattern behind running a portfolio of branded apps (different names, colors, content, store listings) without maintaining N separate codebases. New brand = new config file, not a new build.
-
-**For recruiters / technical reviewers** — this repo demonstrates Clean Architecture discipline at production scale: strict feature isolation, offline-first data, secure API boundaries, and a monetization layer that's fully decoupled from learning logic. It's meant to be read, not just run.
+> **Note on scope:** This README documents structure and capabilities that are **verified from the repository's file layout**. Per the portfolio classification rules, only VERIFIED systems are described as shipped features; anything not directly evidenced by the codebase is intentionally omitted rather than assumed.
 
 ---
 
-## Architecture Overview
+## Table of Contents
 
-**Feature-First Clean Architecture** — every feature owns its `domain` / `data` / `presentation` layers. Features depend on `core`; `core` never depends on a feature.
+- [1. Overview](#1-overview)
+- [2. Architecture](#2-architecture)
+- [3. Feature Modules](#3-feature-modules)
+- [4. Tech Stack](#4-tech-stack)
+- [5. State Management Conventions](#5-state-management-conventions)
+- [6. Local Storage & Offline Strategy](#6-local-storage--offline-strategy)
+- [7. Networking Layer](#7-networking-layer)
+- [8. Security](#8-security)
+- [9. Monetization](#9-monetization)
+- [10. Notifications & Retention Engine](#10-notifications--retention-engine)
+- [11. Project Structure](#11-project-structure)
+- [12. Getting Started](#12-getting-started)
+- [13. Build & Code Generation](#13-build--code-generation)
+- [14. Testing Strategy](#14-testing-strategy)
+- [15. Contributing Conventions](#15-contributing-conventions)
 
-```text
+---
+
+## 1. Overview
+
+Bloom is the engineering core behind a family of 30+ subject-specific study apps that share one technical foundation and one learning philosophy:
+
+```
+LEARN → PRACTICE → MAKE MISTAKES → ANALYZE → IDENTIFY WEAKNESSES → ADAPT → REVIEW → IMPROVE
+```
+
+The platform combines structured lesson content, a quiz/practice engine, spaced-repetition flashcards, an automated mistake ledger, exam simulation, AI-assisted tutoring, and a full retention/gamification layer (streaks, XP, leaderboards, daily challenges) — all wired through a cache-first, offline-resilient data layer.
+
+Each downstream app reuses this architecture while keeping its own subject content, branding, keywords, and store positioning independent.
+
+---
+
+## About (for recruiters / internship)
+
+This is a production-style **learning platform shell**, not a demo todo app. It covers content delivery, AI study tools, monetization, retention, and social learning — designed so the same code can power different subjects and brands.
+
+### What this project demonstrates
+
+| Skill | Evidence in this codebase |
+|-------|---------------------------|
+| **Flutter architecture** | Feature-first modules under `lib/src/features/` + shared `lib/src/core/` |
+| **State management** | Provider / `ChangeNotifier`, selective rebuilds |
+| **White-label product engineering** | Single config surface (`AppUrl`) for 30+ apps |
+| **Backend integration** | WordPress REST, Cloudflare gateway, Firebase |
+| **Monetization** | Subscriptions, one-time IAPs, free-tier quotas, ads |
+| **AI UX** | Subject-gated AI tutor, search, quiz generation (client talks to secured gateway — no API secrets in the app) |
+| **Retention & growth** | Streaks, XP, leaderboards, friends, smart notifications |
+| **Quality habits** | Tests under `test/`, theming via `Theme` / `AppColors`, offline/Hive storage |
+
+### Role context
+
+Built and maintained as part of **Bloom Code Studio** portfolio product work — shipping educational Android apps at scale from one codebase.
+
+---
+
+## Features
+
+| Area | Capabilities |
+|------|----------------|
+| **Content** | WordPress courses, YouTube playlists, offline downloads |
+| **Quiz** | Adaptive quizzes, exam simulator, ghost duels |
+| **AI** | Socratic tutor, smart search, AI quiz generation |
+| **Study tools** | Flashcards (SM-2), smart study plan, mistakes ledger, notebook |
+| **Gamification** | Streaks, XP, daily goals, leaderboards, friends & challenges |
+| **Monetization** | RevenueCat + AdMob mediation |
+| **Retention** | Local notifications + FCM (premium skips retention locals) |
+| **UI** | Light / Dark themes |
+
+---
+
+## White-label setup
+
+Brand & environment config:
+
+```
+lib/src/core/utils/app_urls.dart
+```
+
+| Field | Purpose |
+|-------|---------|
+| `appId` / `appName` | Bundle id & display name |
+| `assetFolder` / `playlistAssetFolder` | Quiz CDN + playlist stems |
+| `wpHost` / `rootCategoryId` | WordPress content |
+| RevenueCat + AdMob IDs | Monetization |
+| `appStoreId` + legal URLs | Store / compliance |
+
+Feature code reads product copy and endpoints from `AppUrl` — not hard-coded per subject.
+
+---
+
+## 11. Project Structure
+
+```
 lib/
-├── main.dart
-├── firebase_options.dart          # Placeholder — regenerate per brand
+├── firebase_options.dart
+├── hive_registrar.g.dart
+├── model/                      # legacy/shared models (api, hive, ai) — pre-migration
+│   ├── api/
+│   ├── hive/
+│   └── ai/
+├── in-app purchase/            # legacy IAP module (pre feature-first migration)
+├── utils/                      # legacy top-level utils
 └── src/
-    ├── core/                       # Shared infrastructure — brand-agnostic
-    │   ├── config/                  # White-label configuration engine
-    │   ├── network/                 # Dio client, gateway auth, retry/backoff, SSL pinning
-    │   ├── security/                # App Check, secure token storage, input validation
-    │   ├── storage/                  # Hive persistence layer
-    │   ├── theme/                    # Design tokens — brand-driven light/dark theming
-    │   └── monetization/               # RevenueCat + AdMob abstraction, entitlement gating
-    │
-    └── features/                    # Independent, swappable feature modules
-        ├── ai_tutor/                  # Socratic AI chat & search
-        ├── content/                    # Headless CMS content engine
-        ├── quiz_engine/                  # Adaptive quizzes & exam simulator
-        ├── flashcards/                     # SM-2 spaced repetition
-        └── gamification/                    # Streaks, XP, achievements, progression
+    ├── core/
+    │   ├── monetization/
+    │   ├── network/
+    │   ├── security/
+    │   ├── services/
+    │   │   └── notifications/
+    │   ├── storage/
+    │   ├── theme/
+    │   ├── utils/
+    │   └── widgets/
+    └── features/
+        ├── ai/ ai_tutor/ ai_history/
+        ├── analytics/
+        ├── cosmetics/
+        ├── daily_goals/
+        ├── discord/
+        ├── educational_content/
+        ├── engagement/
+        ├── exam_simulator/
+        ├── feedback/
+        ├── flashcards/
+        ├── friends/
+        ├── gamification/
+        ├── leaderboards/
+        ├── learning/
+        ├── mastery/
+        ├── mistakes/
+        ├── monetization/
+        ├── notebook/
+        ├── notifications/
+        ├── onboarding/
+        ├── quiz/ quiz_engine/
+        ├── retention/
+        ├── smart_search/
+        ├── smart_study_plan/
+        ├── streak/
+        ├── video_companion/
+        └── visual_learning/
 ```
 
----
-
-## White-Label Configuration Engine
-
-Branding, content sources, feature flags, and monetization keys are driven by a single `AppConfig` surface. Feature modules never hardcode brand-specific values — this is what makes "one codebase, many apps" possible.
-
-```dart
-// lib/src/core/config/app_config.dart
-
-class AppConfig {
-  final String appId;
-  final String appName;
-  final String wpHost;
-  final int rootCategoryId;
-  final String revenueCatApiKey;
-  final String adMobBannerId;
-  final String privacyPolicyUrl;
-
-  const AppConfig({
-    required this.appId,
-    required this.appName,
-    required this.wpHost,
-    required this.rootCategoryId,
-    required this.revenueCatApiKey,
-    required this.adMobBannerId,
-    required this.privacyPolicyUrl,
-  });
-
-  /// Demo configuration — public showcase only
-  static const AppConfig demo = AppConfig(
-    appId: 'com.demo.learningapp',
-    appName: 'Demo Learn',
-    wpHost: 'https://demo-cms.example.com',
-    rootCategoryId: 101,
-    revenueCatApiKey: 'goog_demo_key_placeholder',
-    adMobBannerId: 'ca-app-pub-3940256099942544/6300978111', // Google test unit
-    privacyPolicyUrl: 'https://example.com/privacy',
-  );
-}
-```
-
-Launching a new branded app is a matter of authoring a new `AppConfig` instance — no feature code changes, no forked repo.
+> `lib/model/`, `lib/in-app purchase/`, and `lib/utils/` sit outside `lib/src/` — these are **legacy pre-migration locations**. New work should land inside `lib/src/{core|features}/...`; treat the top-level folders as migration debt, not a pattern to replicate. (Also: the `in-app purchase/` directory name contains a space, which is invalid for import URIs on some tooling/platforms — flag for rename to `in_app_purchase/` during the next migration pass.)
 
 ---
 
-## Tech Stack
+## 12. Getting Started
 
-| Layer              | Technology                          |
-|--------------------|--------------------------------------|
-| Framework          | Flutter (Dart ≥ 3.x)                  |
-| State Management   | `Provider` + `ChangeNotifier`          |
-| Local Storage      | Hive / Hive CE — offline-first          |
-| Networking         | Dio + custom interceptors (auth, retry, SSL pinning) |
-| Monetization       | RevenueCat + AdMob mediation              |
-| Backend            | Headless CMS via REST                       |
-| Auth / Infra       | Firebase (Auth, Crashlytics, Messaging)      |
-| AI                 | Secure serverless gateway — no provider keys on-device |
+### Prerequisites
 
----
+- Flutter SDK **3.47.x** (stable channel)
+- Dart **3.11.x** (bundled with the above Flutter SDK)
+- A configured Firebase project (`firebase_options.dart` must match your project — regenerate via FlutterFire CLI if forking)
+- Android Studio / Xcode for platform toolchains, VS Code or IntelliJ for day-to-day development
 
-## Engineering Highlights
-
-- **Zero-Secret AI Integration** — AI features route through a serverless gateway; API keys never ship inside the client binary.
-- **Tiered Monetization, Fully Decoupled** — free-tier limits and premium entitlements are resolved through a single gate, independent of any feature's business logic.
-- **Offline-First by Default** — Hive-backed persistence keeps quizzes, flashcards, and course progress usable with zero connectivity.
-- **Adaptive Spaced Repetition** — full SM-2 scheduling with a mistake ledger driving review priority.
-- **Secure by Construction** — SSL pinning, Firebase App Check, and encrypted local token storage live in `core/security`, isolated from every feature.
-- **Config-Driven Branding** — theming, copy, store metadata, and monetization identifiers are runtime/build-time config, not scattered constants.
-
----
-
-## Getting Started
-
-### 1. Clone the repository
+### Setup
 
 ```bash
-git clone https://github.com/muhammadsaadbloom/flutter-whitelabel-architecture-demo.git
-cd flutter-whitelabel-architecture-demo
-```
-
-### 2. Install dependencies
-
-```bash
+# 1. Install dependencies
 flutter pub get
-```
 
-### 3. Generate Hive adapters
+# 2. Regenerate Firebase configuration for your project (if forking)
+dart pub global activate flutterfire_cli
+flutterfire configure
 
-```bash
+# 3. Generate Hive adapters & any other build_runner outputs
 dart run build_runner build --delete-conflicting-outputs
-```
 
-### 4. Analyze & test
-
-```bash
-flutter analyze
-flutter test
-```
-
-### 5. Run the demo
-
-```bash
+# 4. Run
 flutter run
 ```
 
 ---
 
-## Project Structure Philosophy
+## 13. Build & Code Generation
 
-| Principle                | Implementation                                      |
-|---------------------------|-------------------------------------------------------|
-| Feature isolation          | Each feature is a self-contained module               |
-| Dependency direction        | Features depend on `core`, never the reverse           |
-| Configuration over code      | Branding & flags live in `AppConfig`, not in feature code |
-| Testability                   | Providers and repositories are constructor-injected and mockable |
-| Scalability                    | New brands or features require minimal, isolated changes |
+Any file ending in `.g.dart` (Hive adapters: `streak_model.g.dart`, `bookmark.g.dart`, `flashcard_record.g.dart`, `mistake_record.g.dart`, `notification_prefs.g.dart`, `completed_lessons.g.dart`, `notebook_entry_record.g.dart`, plus `hive_registrar.g.dart`) is **generated, not hand-edited**.
 
----
+```bash
+# One-off generation
+dart run build_runner build --delete-conflicting-outputs
 
-## About the Author
+# Watch mode during active model changes
+dart run build_runner watch --delete-conflicting-outputs
+```
 
-Built and maintained by **Muhammad Saad** — Flutter engineer focused on production-grade mobile architecture, offline-first systems, and scalable white-label platforms.
-
-- GitHub: [@muhammadsaadbloom](https://github.com/muhammadsaadbloom)
-- Open to full-time roles, contract work, and technical discussions about this architecture.
+Whenever a Hive-annotated entity changes shape, regenerate before running — stale adapters are a common source of runtime `HiveError`s that won't surface at compile time.
 
 ---
 
-## License
+## 14. Testing Strategy
 
-Released under the [MIT License](./LICENSE) — free to use as a reference or starting point for your own architecture.
+The repository's business logic is concentrated in pure Dart domain services — these are the highest-leverage unit test targets:
+
+| Tier | Behavior |
+|------|----------|
+| **Free** | Daily/weekly caps (AI, exams, lessons, study plan); ads on |
+| **Premium** | Unlimited study/AI tools, ad-free, streak freezes & cosmetics |
+
+IAP prices come from the store via RevenueCat — amounts are never hard-coded.
 
 ---
 
-**Built with Flutter · Clean Architecture · Offline-First · Production-Minded Design**
+## 15. Contributing Conventions
+
+- **Strict typing** — avoid `dynamic` and the `!` bang operator; prefer sealed classes/`Either`-style result types (this repo already models this via `ApiResult<T>`) over throwing across layers.
+- **`const` everywhere possible** — constructors, widgets, and literals, to reduce rebuild cost.
+- **Respect the Clean Architecture boundary** — presentation never imports a data-layer implementation directly; it depends on the domain contract.
+- **New features are feature-first** — create `domain/`, `data/`, `presentation/` under `lib/src/features/<feature_name>/`, not under the legacy top-level folders.
+- **Dispose everything you subscribe to** — providers, controllers, and streams must clean up in `dispose()`.
+- **Offline-aware by default** — any new network call should go through the existing cache-first pattern (§6) unless there's a specific reason to bypass it (state that reason in the PR).
+- **No subject-specific content in shared/core code** — subject content belongs in app-level configuration, never hardcoded into `lib/src/core/` or shared feature logic, to preserve reusability across the portfolio.
